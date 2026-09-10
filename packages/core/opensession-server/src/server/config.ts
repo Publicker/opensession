@@ -44,6 +44,15 @@ export interface ServerSection {
   previewHost?: string;
   /** Caddy admin API endpoint. */
   caddyAdmin?: string;
+  /**
+   * Template for host Portal URLs when a wildcard reverse-proxy already
+   * handles routing without the Caddy admin-API plumbing.
+   * Use `{port}` as the placeholder, e.g. "https://p{port}.example.com".
+   * When set, OpenSession skips the per-port Caddy route and returns this
+   * URL directly. The "Open in browser" button and PORTAL_URL env var both
+   * use it.
+   */
+  portalUrlTemplate?: string;
 }
 
 export interface PathsSection {
@@ -299,6 +308,8 @@ export interface ResolvedServer {
   webhookBaseUrl: string;
   previewHost: string;
   caddyAdmin: string;
+  /** Optional subdomain-based Portal URL template, e.g. "https://p{port}.example.com". */
+  portalUrlTemplate: string | null;
 }
 
 export interface ResolvedIngress {
@@ -457,6 +468,7 @@ function parseConfig(text: string): OpenSessionConfig {
         publicBaseUrl: str(server.publicBaseUrl),
         previewHost: str(server.previewHost),
         caddyAdmin: str(server.caddyAdmin),
+        portalUrlTemplate: str(server.portalUrlTemplate),
       });
     }
 
@@ -655,6 +667,8 @@ export function configuredServer(): ResolvedServer {
     // unrelated machine/tailnet hostname would make every browser portal 401.
     previewHost: process.env.PREVIEW_HOST || s.previewHost || publicHost,
     caddyAdmin: s.caddyAdmin || "http://localhost:2019",
+    portalUrlTemplate:
+      process.env.PORTAL_URL_TEMPLATE || s.portalUrlTemplate || null,
   };
 }
 

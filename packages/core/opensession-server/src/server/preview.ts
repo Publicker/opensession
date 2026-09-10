@@ -630,21 +630,29 @@ export async function getPreviewStatus(
   // Routes share the same authenticated Caddy wrapper; high source ports that
   // would overlap the sandbox namespace stay visible without a link.
   const services: PreviewService[] = [];
+  const { portalUrlTemplate } = configuredServer();
   for (const service of observedServices) {
-    const httpsPort = hostServiceHttpsPort(service.port);
     let previewUrl: string | null = null;
-    if (
-      (service.state === "awake" ||
-        (service.managed && service.state === "sleeping")) &&
-      httpsPort != null
-    ) {
-      if (
-        await ensurePreviewRoute(httpsPort, `127.0.0.1:${service.port}`, host)
-      ) {
-        previewUrl = `https://${host}:${httpsPort}`;
+    const active =
+      service.state === "awake" ||
+      (service.managed === true && service.state === "sleeping");
+    if (portalUrlTemplate) {
+      // Wildcard reverse-proxy already handles routing: skip Caddy admin-API
+      // plumbing and derive the URL directly from the template.
+      previewUrl = active
+        ? portalUrlTemplate.replace("{\"port}", String(service.port))
+        : null;
+    } else {
+      const httpsPort = hostServiceHttpsPort(service.port);
+      if (active && httpsPort != null) {
+        if (
+          await ensurePreviewRoute(httpsPort, `127.0.0.1:${service.port}`, host)
+        ) {
+          previewUrl = `https://${host}:${httpsPort}`;
+        }
+      } else if (httpsPort != null) {
+        await removePreviewRoute(httpsPort);
       }
-    } else if (httpsPort != null) {
-      await removePreviewRoute(httpsPort);
     }
     services.push({ ...service, previewUrl });
   }

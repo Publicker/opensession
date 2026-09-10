@@ -663,8 +663,12 @@ export async function startPortalService(input: {
       ownsProcess: true,
       logPath,
       allocatePort: () => allocatePort(input.worktreeDir),
-      urlFor: (port) =>
-        `https://${configuredServer().previewHost}:${port + 6_000}`,
+      urlFor: (port) => {
+        const { portalUrlTemplate, previewHost } = configuredServer();
+        return portalUrlTemplate
+          ? portalUrlTemplate.replace("{port}", String(port))
+          : `https://${previewHost}:${port + 6_000}`;
+      },
       launch: async ({ name, command, port, url }) => {
         mkdirSync(logDir, { recursive: true });
         const log = openSync(logPath, "w");
